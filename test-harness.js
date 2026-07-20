@@ -309,7 +309,13 @@ function setupControls() {
   delayInput.value = runner.delay;
   runner.delay = Number(delayInput.value); // clamp to the slider's range
   delayOutput.textContent = `${runner.delay}ms`;
+  // While dragging, only preview the value in the output; the running tests
+  // keep using the old delay. The new delay applies on "change", which fires
+  // when the slider is released (or a keyboard adjustment is committed).
   delayInput.addEventListener("input", () => {
+    delayOutput.textContent = `${delayInput.value}ms`;
+  });
+  delayInput.addEventListener("change", () => {
     runner.delay = Number(delayInput.value);
     delayOutput.textContent = `${runner.delay}ms`;
   });
