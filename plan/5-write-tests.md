@@ -1,8 +1,6 @@
-# Tests
+Write unit test within tests.js. I have created some pseudo test code you can utalise.
 
-Create test.html page and tests.js file. Import the test.js file into this page. In the tests.js file, import the functions from the app.js. You may need to edit the app.js first to export the functions. The test.js file should define the test then run them and log the results to the console. If required set up a small reusable function for this. Do not use any 3rd party dependencies.
-
-Write unit test for the following game logic requirements:
+it should meet the following game logic requirements:
 
 - Tiles slide as far as possible in the chosen direction until they are stopped by either another tile or the edge of the grid.
 - If two tiles of the same number collide while moving, they will merge into a tile with the total value of the two tiles that collided.

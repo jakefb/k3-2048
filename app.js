@@ -2,6 +2,13 @@ const SIZE = 4;
 const CELL_COUNT = SIZE * SIZE;
 const TWO_PROBABILITY = 0.9;
 
+// Flags the test harness flips during test runs.
+export const settings = {
+  // Spawn a random tile after every successful move. The harness disables
+  // this so moves in tests are deterministic.
+  spawnTileAfterMove: true,
+};
+
 const KEY_DIRECTIONS = {
   ArrowUp: "up",
   ArrowDown: "down",
@@ -9,11 +16,13 @@ const KEY_DIRECTIONS = {
   ArrowRight: "right",
 };
 
-// --- DOM references ---
+// --- DOM references (empty when running headless under Node) ---
 
-const cells = document.querySelectorAll("#grid .cell");
-const currentScoreEl = document.getElementById("current-score");
-const bestScoreEl = document.getElementById("best-score");
+const hasDom = typeof document !== "undefined";
+
+const cells = hasDom ? document.querySelectorAll("#grid .cell") : [];
+const currentScoreEl = hasDom ? document.getElementById("current-score") : null;
+const bestScoreEl = hasDom ? document.getElementById("best-score") : null;
 
 // --- Render handlers (reactive UI updates) ---
 
@@ -41,6 +50,7 @@ function renderIds(ids) {
 }
 
 function renderScores() {
+  if (!hasDom) return;
   currentScoreEl.textContent = state.score;
   bestScoreEl.textContent = state.bestScore;
 }
@@ -79,7 +89,7 @@ export const state = new Proxy(
 
 // Index of the cell at `position` (0 = edge being moved toward) within
 // row/column `line` for the given direction. Reading lines in this order
-// lets slideLine be reused unchanged for all four directions.
+// lets slideTiles be reused unchanged for all four directions.
 function lineIndex(direction, line, position) {
   switch (direction) {
     case "left":
@@ -119,21 +129,6 @@ function slideTiles(tiles) {
   }
 
   return { line: result, scoreDelta };
-}
-
-// Value-only view of slideTiles, for tests and demos that work with plain
-// number lines. Pass `ids` to track tile identities through the slide — the
-// returned `ids` line up with the returned values, so demos can keep each
-// cell's data-id in sync as its tile moves and merges.
-export function slideLine(line, ids = line.map(() => 0)) {
-  const { line: slid, scoreDelta } = slideTiles(
-    line.map((value, index) => (value === 0 ? null : { value, id: ids[index] })),
-  );
-  return {
-    line: slid.map((tile) => (tile === null ? 0 : tile.value)),
-    ids: slid.map((tile) => (tile === null ? 0 : tile.id)),
-    scoreDelta,
-  };
 }
 
 // Every tile gets the next id, starting at 1.
@@ -179,24 +174,28 @@ export function computeNextState(currentGrid, direction, currentIds = Array(CELL
     }
   }
 
-  if (moved) {
+  if (moved && settings.spawnTileAfterMove) {
     spawnTile(grid, ids);
   }
 
   return { grid, ids, scoreDelta, moved };
 }
 
-// --- Keyboard controls: the game loop entry point ---
+// --- Move pipeline: shared by keyboard controls and programmatic moves ---
 
-document.addEventListener("keydown", (event) => {
-  const direction = KEY_DIRECTIONS[event.key];
-  if (!direction) return;
-  event.preventDefault();
-
+// Computes the next state for a move and, if it changed anything, commits it
+// to the live state — inside a view transition when the DOM supports it,
+// synchronously otherwise. Score and best score update through the same
+// reactive proxy path as real play. Returns the outcome plus `done`, a
+// promise that resolves once the state update is committed, so callers
+// (tests) never read pre-transition state.
+export function performMove(direction) {
   const { grid, ids, scoreDelta, moved } = computeNextState(state.grid, direction, state.ids);
-  if (!moved) return;
+  if (!moved) {
+    return { moved, scoreDelta, done: Promise.resolve() };
+  }
 
-  document.startViewTransition(() => {
+  const commit = () => {
     state.ids = ids;
     state.grid = grid;
     if (scoreDelta > 0) {
@@ -205,8 +204,29 @@ document.addEventListener("keydown", (event) => {
         state.bestScore = state.score;
       }
     }
+  };
+
+  let done;
+  if (hasDom && typeof document.startViewTransition === "function") {
+    done = document.startViewTransition(commit).updateCallbackDone;
+  } else {
+    commit();
+    done = Promise.resolve();
+  }
+
+  return { moved, scoreDelta, done };
+}
+
+// --- Keyboard controls: the game loop entry point ---
+
+if (hasDom) {
+  document.addEventListener("keydown", (event) => {
+    const direction = KEY_DIRECTIONS[event.key];
+    if (!direction) return;
+    event.preventDefault();
+    performMove(direction);
   });
-});
+}
 
 // --- Game start: spawn two tiles and render ---
 

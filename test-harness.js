@@ -1,4 +1,205 @@
-import { state } from "./app.js";
+import { state, computeNextState, takeTileId, performMove, settings } from "./app.js";
+
+// Re-export the game API so test modules import everything from the harness.
+export { state, computeNextState, takeTileId, performMove, settings };
+
+const hasDom = typeof document !== "undefined";
+
+// --- Test registry ---
+
+const tests = [];
+
+// Registers a test. There are no per-test hooks — the runner resets the game
+// to a clean slate before every test.
+export function test(name, fn) {
+  tests.push({ name, fn });
+}
+
+// --- Runner state, shared with the control panel ---
+
+const runner = {
+  running: false,
+  paused: false,
+  delay: 600, // ms to linger after each move; the delay slider overrides this
+  currentTest: null,
+};
+
+// --- Elapsed-time timer ---
+
+// Formats milliseconds as m:ss.d, e.g. 0:04.8.
+function formatElapsed(ms) {
+  const tenths = Math.floor(ms / 100);
+  const minutes = Math.floor(tenths / 600);
+  const seconds = Math.floor((tenths % 600) / 10);
+  return `${minutes}:${String(seconds).padStart(2, "0")}.${tenths % 10}`;
+}
+
+// Wall clock for the panel. Banks the elapsed time whenever the run is
+// paused, so the display freezes while paused and resume() continues from
+// the banked total instead of counting the paused stretch. Headless there
+// is no display and no pausing, so no interval is ever created.
+const runTimer = {
+  banked: 0, // ms accumulated before the current active stretch
+  startedAt: 0, // performance.now() at the last start/resume
+  intervalId: null,
+
+  elapsed() {
+    const active = this.intervalId === null ? 0 : performance.now() - this.startedAt;
+    return this.banked + active;
+  },
+
+  // Fresh run: zero the clock and start ticking.
+  start() {
+    this.banked = 0;
+    this.resume();
+  },
+
+  resume() {
+    if (!hasDom || this.intervalId !== null) return;
+    this.startedAt = performance.now();
+    this.intervalId = setInterval(() => this.render(), 100);
+    this.render();
+  },
+
+  // Freeze the display, keeping the total for resume() or stop().
+  pause() {
+    if (this.intervalId === null) return;
+    this.banked += performance.now() - this.startedAt;
+    clearInterval(this.intervalId);
+    this.intervalId = null;
+    this.render();
+  },
+
+  // Run finished: bank the final stretch; the total stays on display.
+  stop() {
+    this.pause();
+  },
+
+  render() {
+    if (!hasDom) return;
+    timerEl.textContent = formatElapsed(this.elapsed());
+  },
+};
+
+// --- Helpers for tests ---
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Resolves once the runner is no longer paused.
+function waitWhilePaused() {
+  return new Promise((resolve) => {
+    const check = () => (runner.paused ? setTimeout(check, 50) : resolve());
+    check();
+  });
+}
+
+// Writes a 16-cell array of values into the live state, allocating a fresh
+// tile id per non-zero cell so identity tracking (data-id, view-transition
+// names) keeps working for tiles placed by tests. Then lingers for the step
+// delay, so the set-up board is visible in the browser before the test's
+// first move — the same pacing move() applies between moves. Await it so the
+// test's moves stay in step with the delay slider and Pause button.
+export async function setGrid(values) {
+  state.ids = values.map((value) => (value === 0 ? 0 : takeTileId()));
+  state.grid = [...values];
+  await waitWhilePaused();
+  await sleep(runner.delay);
+}
+
+// Performs one move with test pacing: waits out any pause, commits the move
+// and awaits the commit (so assertions never read pre-transition state),
+// then lingers for the step delay so the move is visible in the browser.
+// This is what makes the delay slider and Pause button work with zero hooks
+// in the tests themselves.
+export async function move(direction) {
+  await waitWhilePaused();
+  const outcome = performMove(direction);
+  await outcome.done;
+  await sleep(runner.delay);
+  return outcome;
+}
+
+// Deep-equality assertion for the plain data tests compare (grids, lines,
+// scores). Throws with a diff-style message on mismatch.
+export function assertDeepEqual(actual, expected, message = "assertion failed") {
+  const actualJson = JSON.stringify(actual);
+  const expectedJson = JSON.stringify(expected);
+  if (actualJson !== expectedJson) {
+    throw new Error(`${message}: expected ${expectedJson}, got ${actualJson}`);
+  }
+}
+
+// --- Runner ---
+
+// Marks a test's row in the panel; a no-op headless, where no rows exist.
+function markTest(name, result) {
+  const item = testItems.get(name);
+  if (item) {
+    item.dataset.result = result;
+  }
+}
+
+// Wipes the result marks from every row in the panel, so a new run starts
+// with no stale passed/failed indicators from the previous run. A no-op
+// headless, where the map is empty.
+function clearResults() {
+  for (const item of testItems.values()) {
+    delete item.dataset.result;
+  }
+}
+
+async function runTests(selected) {
+  runner.running = true;
+  runner.paused = false;
+  clearResults();
+  runTimer.start();
+  updateControls();
+
+  let passed = 0;
+  let failed = 0;
+
+  for (const { name, fn } of selected) {
+    runner.currentTest = name;
+    markTest(name, "running");
+    updateControls();
+
+    // Reset to a clean slate: empty board, zeroed scores — but not
+    // nextTileId, since ids must stay page-unique. Disable auto-spawn so
+    // moves are deterministic.
+    state.ids = Array(state.grid.length).fill(0);
+    state.grid = Array(state.grid.length).fill(0);
+    state.score = 0;
+    state.bestScore = 0;
+    settings.spawnTileAfterMove = false;
+
+    try {
+      await fn();
+      passed++;
+      markTest(name, "passed");
+      console.log(`\u2705 ${name}`);
+    } catch (error) {
+      failed++;
+      markTest(name, "failed");
+      console.error(`\u274C ${name}`);
+      console.error(error);
+    }
+
+    await waitWhilePaused();
+  }
+
+  settings.spawnTileAfterMove = true;
+  runner.running = false;
+  runner.currentTest = null;
+  runTimer.stop();
+
+  const summary = `${passed} passed, ${failed} failed`;
+  updateControls(summary);
+  console.log(summary);
+
+  return { passed, failed };
+}
 
 // --- Control panel: select tests, run/pause/resume, adjust the step delay ---
 
@@ -13,8 +214,10 @@ let selectAllButton;
 let selectNoneButton;
 let testList;
 let statusEl;
+let timerEl;
 
 function updateControls(summary) {
+  if (!hasDom) return; // headless: there is no panel to update
   runButton.disabled = runner.running;
   pauseButton.disabled = !runner.running;
   pauseButton.textContent = runner.paused ? "Resume" : "Pause";
@@ -24,6 +227,7 @@ function updateControls(summary) {
     checkbox.disabled = runner.running;
   }
   testList.classList.toggle("paused", runner.paused); // freezes the inline spinner
+  timerEl.classList.toggle("paused", runner.paused); // dims the frozen timer
   if (runner.running) {
     // The running test is shown inline with a spinner, so the status line
     // only needs to say something while the run is paused.
@@ -52,6 +256,7 @@ function setupControls() {
   selectNoneButton = document.getElementById("select-none");
   testList = document.getElementById("test-list");
   statusEl = document.getElementById("test-status");
+  timerEl = document.getElementById("test-timer");
 
   // One row per registered test: a checkbox to enable/disable the test, its
   // description, and a status cell for the spinner or result. All tests are
@@ -87,6 +292,11 @@ function setupControls() {
 
   pauseButton.addEventListener("click", () => {
     runner.paused = !runner.paused;
+    if (runner.paused) {
+      runTimer.pause();
+    } else {
+      runTimer.resume();
+    }
     updateControls();
   });
 
@@ -104,6 +314,19 @@ function setupControls() {
   updateControls();
 }
 
-// Module scripts run after parsing but before DOMContentLoaded fires, so
-// this always runs after the test modules that import this one.
-document.addEventListener("DOMContentLoaded", setupControls);
+// Environment split. In the browser tests run from the panel's Run button;
+// module scripts run after parsing but before DOMContentLoaded fires, so the
+// panel setup always happens after the test modules that import this one.
+// Headless (Node) there is no panel — run every registered test once the
+// whole module graph has finished evaluating, and exit non-zero on failure.
+if (hasDom) {
+  document.addEventListener("DOMContentLoaded", setupControls);
+} else {
+  queueMicrotask(async () => {
+    runner.delay = 0; // nothing to watch headless, so no step delay
+    const { failed } = await runTests(tests);
+    if (failed > 0) {
+      process.exitCode = 1;
+    }
+  });
+}
