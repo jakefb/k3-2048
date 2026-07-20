@@ -9,6 +9,15 @@
   --color-brown-2: oklch(0.92 0.02 75);  /* light text on dark boxes */
   --color-blue-1: oklch(0.6 0.11 250);   /* accent: buttons and form controls */
   --color-grey-1: oklch(0.3 0 0 / 0.7);  /* semi-opaque dark overlay scrim */
+  --color-white-1: oklch(0.99 0 0);      /* tile text on saturated backgrounds */
+
+  /* Tile backgrounds by value (2 and 4 reuse the beige ramp: 4 is beige-3) */
+  --color-beige-4: oklch(0.96 0.01 85);  /* tile 2 */
+  --color-orange-1: oklch(0.8 0.11 65);  /* tile 8: light orange */
+  --color-orange-2: oklch(0.72 0.13 60); /* tile 16: slightly darker orange */
+  --color-red-1: oklch(0.66 0.15 40);    /* tile 32: lightish red */
+  --color-red-2: oklch(0.58 0.2 35);     /* tile 64: more vivid, darker red */
+  --color-yellow-1: oklch(0.84 0.14 88); /* tiles 128 and above */
 
   /* Spacing */
   --spacing-1: 0.5rem;
