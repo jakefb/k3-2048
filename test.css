@@ -160,8 +160,17 @@
     transform: translateZ(0);
   }
 
+  /* While paused, the running test's spinner is swapped for a pause symbol
+     — undo the spinner artwork (scaled-down font, fixed box, box-shadow
+     animation) and render the glyph at the row's text size. */
   .test-list.paused li[data-result="running"] .test-result::after {
-    animation-play-state: paused;
+    content: "⏸";
+    font-size: 1em;
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    animation: none;
+    transform: none;
   }
 
   .test-list label {

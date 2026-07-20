@@ -229,12 +229,12 @@ function updateControls(summary) {
   for (const checkbox of testList.querySelectorAll("input")) {
     checkbox.disabled = runner.running;
   }
-  testList.classList.toggle("paused", runner.paused); // freezes the inline spinner
+  testList.classList.toggle("paused", runner.paused); // swaps the inline spinner for ⏸
   timerEl.classList.toggle("paused", runner.paused); // dims the frozen timer
   if (runner.running) {
-    // The running test is shown inline with a spinner, so the status line
-    // only needs to say something while the run is paused.
-    statusEl.textContent = runner.paused ? `⏸ Paused: ${runner.currentTest}` : "";
+    // The running test is marked inline (a spinner, or ⏸ while paused), so
+    // the status line stays empty for the whole run.
+    statusEl.textContent = "";
   } else {
     statusEl.textContent = summary ?? "Select one or more tests, then press Run.";
   }
