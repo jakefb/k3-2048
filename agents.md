@@ -1,6 +1,6 @@
 Your goal is to create a 2048-like web based game, but you must do it one step at a time as instructed rather than creating the whole game at once. 2048 is a sliding puzzle game. The objective of the game is to slide numbered tiles on a grid to combine them to create a tile with the number 2048.
 
-All project files are within the top level directory.
+All project files are within the src/ level directory. ensure you are cd'ed into src/, and assume any paths mentioned (except for paths under plan/) are relative to it as the working directory.
 
 The project is built as a minimal web app:
 - HTML5, modern CSS features targeting latest Chrome version

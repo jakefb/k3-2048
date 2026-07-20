@@ -1,7 +1,25 @@
-import { state, computeNextState, takeTileId, performMove, settings } from "./app.js";
+import {
+  state,
+  computeNextState,
+  takeTileId,
+  performMove,
+  settings,
+  isGameOver,
+  parseBestScore,
+  loadBestScore,
+} from "./app.js";
 
 // Re-export the game API so test modules import everything from the harness.
-export { state, computeNextState, takeTileId, performMove, settings };
+export {
+  state,
+  computeNextState,
+  takeTileId,
+  performMove,
+  settings,
+  isGameOver,
+  parseBestScore,
+  loadBestScore,
+};
 
 const hasDom = typeof document !== "undefined";
 
@@ -153,8 +171,10 @@ function clearResults() {
 async function runTests(selected) {
   runner.running = true;
   runner.paused = false;
-  // Ignore arrow keys for the whole run so they cannot move tiles mid-test.
+  // Ignore arrow keys and swipes for the whole run so they cannot move
+  // tiles mid-test.
   settings.keyboardControls = false;
+  settings.touchControls = false;
   clearResults();
   runTimer.start();
   updateControls();
@@ -167,13 +187,14 @@ async function runTests(selected) {
     markTest(name, "running");
     updateControls();
 
-    // Reset to a clean slate: empty board, zeroed scores — but not
-    // nextTileId, since ids must stay page-unique. Disable auto-spawn so
-    // moves are deterministic.
+    // Reset to a clean slate: empty board, zeroed scores, cleared game-over
+    // flag — but not nextTileId, since ids must stay page-unique. Disable
+    // auto-spawn so moves are deterministic.
     state.ids = Array(state.grid.length).fill(0);
     state.grid = Array(state.grid.length).fill(0);
     state.score = 0;
     state.bestScore = 0;
+    state.gameOver = false;
     settings.spawnTileAfterMove = false;
 
     try {
@@ -193,6 +214,7 @@ async function runTests(selected) {
 
   settings.spawnTileAfterMove = true;
   settings.keyboardControls = true;
+  settings.touchControls = true;
   runner.running = false;
   runner.currentTest = null;
   runTimer.stop();

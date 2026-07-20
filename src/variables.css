@@ -8,6 +8,7 @@
   --color-brown-1: oklch(0.42 0.04 60);  /* primary text */
   --color-brown-2: oklch(0.92 0.02 75);  /* light text on dark boxes */
   --color-blue-1: oklch(0.6 0.11 250);   /* accent: buttons and form controls */
+  --color-grey-1: oklch(0.3 0 0 / 0.7);  /* semi-opaque dark overlay scrim */
 
   /* Spacing */
   --spacing-1: 0.5rem;
