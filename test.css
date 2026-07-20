@@ -79,6 +79,19 @@
     min-width: 6ch;
   }
 
+  /* Elapsed-time timer, pinned to the right edge of the toolbar. Tabular
+     numerals keep the digits a fixed width so the text doesn't jitter as it
+     ticks. */
+  .test-timer {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Dimmed while the run is paused, matching the muted-text colour */
+  .test-timer.paused {
+    color: var(--color-grey-3);
+  }
+
   .test-selector-actions {
     display: flex;
     gap: var(--spacing-1);

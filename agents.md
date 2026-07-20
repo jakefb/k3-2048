@@ -19,5 +19,4 @@ Styling rules:
 - Define colors as descriptive variables such as --color-blue-1, using oklch.
 - Use css layers
 
-General rules:
-- Check with the user before creating any harness files that may be required to test your own code. Do not delete these files after you create them.
+Before submitting your work, run the unit tests with: node tests.js; echo "exit code: $?"
