@@ -1,4 +1,13 @@
-import { test, setGrid, move, assertDeepEqual, state, isGameOver, parseBestScore } from "./test-harness.js";
+import {
+  test,
+  setGrid,
+  move,
+  assertDeepEqual,
+  state,
+  isGameOver,
+  parseBestScore,
+  parseGameState,
+} from "./test-harness.js";
 
 const EMPTY_ROW = [0, 0, 0, 0];
 
@@ -233,4 +242,26 @@ test("stored best scores parse to numbers, missing or invalid values default to 
   assertDeepEqual(parseBestScore("not a number"), 0, "invalid value");
   assertDeepEqual(parseBestScore("1024"), 1024, "valid value");
   assertDeepEqual(parseBestScore(String(2048)), 2048, "round trip");
+});
+
+test("stored game states parse to a grid and score, missing or invalid values default to null", () => {
+  assertDeepEqual(parseGameState(null), null, "missing value");
+  assertDeepEqual(parseGameState("not json"), null, "invalid json");
+  assertDeepEqual(parseGameState('{"grid":[2,4],"score":8}'), null, "grid too short");
+  assertDeepEqual(
+    parseGameState(JSON.stringify({ grid: [2, -2, ...Array(14).fill(0)], score: 8 })),
+    null,
+    "negative cell value",
+  );
+  const grid = gridOf([2, 4, 0, 0], EMPTY_ROW, EMPTY_ROW, EMPTY_ROW);
+  assertDeepEqual(
+    parseGameState(JSON.stringify({ grid, score: 20 })),
+    { grid, score: 20 },
+    "round trip",
+  );
+  assertDeepEqual(
+    parseGameState(JSON.stringify({ grid })),
+    { grid, score: 0 },
+    "missing score defaults to 0",
+  );
 });

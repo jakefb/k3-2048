@@ -13,6 +13,10 @@ export const settings = {
   // Swipe gestures move the tiles. The harness disables this while tests run,
   // mirroring keyboardControls.
   touchControls: true,
+  // Persist the board and score to local storage after every move. The
+  // harness disables this so test runs cannot clobber a real saved game —
+  // the test page shares the origin's storage with the game page.
+  persistGameState: true,
 };
 
 const KEY_DIRECTIONS = {
@@ -245,6 +249,51 @@ function saveBestScore(score) {
   localStorage.setItem(BEST_SCORE_KEY, String(score));
 }
 
+// --- Game-state persistence: resume an in-progress game after a reload ---
+//
+// Only the grid and score are stored; tile ids are regenerated on load (see
+// startGame). A game over clears the entry, so a stored state always
+// represents a game with moves remaining.
+
+const GAME_STATE_KEY = "game-state";
+
+// Parses a stored game state; missing or malformed values yield null, so a
+// corrupt entry just starts a fresh game.
+export function parseGameState(stored) {
+  if (stored === null) return null;
+  try {
+    const parsed = JSON.parse(stored);
+    if (
+      !Array.isArray(parsed?.grid) ||
+      parsed.grid.length !== CELL_COUNT ||
+      !parsed.grid.every((value) => Number.isInteger(value) && value >= 0)
+    ) {
+      return null;
+    }
+    const score = Number.isInteger(parsed.score) && parsed.score >= 0 ? parsed.score : 0;
+    return { grid: parsed.grid, score };
+  } catch {
+    return null;
+  }
+}
+
+export function loadGameState() {
+  if (!hasStorage) return null;
+  return parseGameState(localStorage.getItem(GAME_STATE_KEY));
+}
+
+// state.grid is a plain array (the Proxy wraps the state object, not its
+// values), so it stringifies directly.
+function saveGameState() {
+  if (!hasStorage) return;
+  localStorage.setItem(GAME_STATE_KEY, JSON.stringify({ grid: state.grid, score: state.score }));
+}
+
+function clearGameState() {
+  if (!hasStorage) return;
+  localStorage.removeItem(GAME_STATE_KEY);
+}
+
 // --- Move pipeline: shared by keyboard controls and programmatic moves ---
 
 // Computes the next state for a move and, if it changed anything, commits it
@@ -273,12 +322,19 @@ export function performMove(direction) {
     // successful move.
     if (isGameOver(grid)) {
       state.gameOver = true;
+      // A finished game has nothing to resume — drop the saved state.
+      if (settings.persistGameState) {
+        clearGameState();
+      }
       // Persist only if the game score beat the stored best. state.bestScore
       // is only ever raised when state.score exceeds it (above), so the
       // current-score-takes-precedence behaviour carries over to storage.
       if (state.bestScore > loadBestScore()) {
         saveBestScore(state.bestScore);
       }
+    } else if (settings.persistGameState) {
+      // Persist the move so the game can resume after a reload.
+      saveGameState();
     }
   };
 
@@ -383,15 +439,26 @@ if (hasDom) {
 // reset: they feed data-id and view-transition names, so they must stay
 // page-unique across restarts.
 function startGame() {
-  state.score = 0;
   state.gameOver = false; // its handler hides the game-over container
   state.bestScore = loadBestScore(); // new games load the stored best, default 0
-  const grid = Array(CELL_COUNT).fill(0);
-  const ids = Array(CELL_COUNT).fill(0);
-  spawnTile(grid, ids);
-  spawnTile(grid, ids);
-  state.ids = ids;
-  state.grid = grid;
+  const saved = loadGameState();
+  if (saved) {
+    // Resume the saved game. Ids are not persisted, so regenerate them from
+    // 1 in cell order via takeTileId: it shares one id sequence with spawned
+    // tiles, so the next spawned tile's id continues past the highest id
+    // assigned here.
+    state.score = saved.score;
+    state.ids = saved.grid.map((value) => (value === 0 ? 0 : takeTileId()));
+    state.grid = saved.grid;
+  } else {
+    state.score = 0;
+    const grid = Array(CELL_COUNT).fill(0);
+    const ids = Array(CELL_COUNT).fill(0);
+    spawnTile(grid, ids);
+    spawnTile(grid, ids);
+    state.ids = ids;
+    state.grid = grid;
+  }
   renderScores();
 }
 
