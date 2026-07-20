@@ -136,7 +136,11 @@
     view-transition-class: cell;
   }
   .cell[data-id] {
-    view-transition-name: attr(data-id type(<custom-ident>));
+    /* !important so this wins over the inline view-transition-name app.js
+       sets as a Safari fallback (Safari does not support attr() outside
+       content, so there it drops this declaration and the inline style
+       applies instead). */
+    view-transition-name: attr(data-id type(<custom-ident>)) !important;
   }
 
   ::view-transition-old(.cell):only-child {
