@@ -32,8 +32,3 @@ textarea, select {
   font-family: inherit;
   font-size: inherit;
 }
-
-/* Set min height of body to */
-body {
-  min-height: 100vh;
-}
