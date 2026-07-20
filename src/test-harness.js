@@ -7,6 +7,8 @@ import {
   isGameOver,
   parseBestScore,
   loadBestScore,
+  parseGameState,
+  loadGameState,
 } from "./app.js";
 
 // Re-export the game API so test modules import everything from the harness.
@@ -19,6 +21,8 @@ export {
   isGameOver,
   parseBestScore,
   loadBestScore,
+  parseGameState,
+  loadGameState,
 };
 
 const hasDom = typeof document !== "undefined";
@@ -196,6 +200,7 @@ async function runTests(selected) {
     state.bestScore = 0;
     state.gameOver = false;
     settings.spawnTileAfterMove = false;
+    settings.persistGameState = false; // tests must not clobber a real saved game
 
     try {
       await fn();
@@ -213,6 +218,7 @@ async function runTests(selected) {
   }
 
   settings.spawnTileAfterMove = true;
+  settings.persistGameState = true;
   settings.keyboardControls = true;
   settings.touchControls = true;
   runner.running = false;
