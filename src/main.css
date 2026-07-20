@@ -15,6 +15,19 @@
 }
 
 @layer game {
+  /* The whole page is the swipe surface: never let the browser interpret
+     touches as page gestures. overflow: hidden stops scrolling entirely,
+     overscroll-behavior stops rubber-banding/pull-to-refresh, and
+     touch-action: none stops panning and pinch/double-tap zoom (the browser
+     intersects touch-action up the ancestor chain, so html/body covers every
+     element on the page). app.js adds a JS fallback for older iOS Safari. */
+  html,
+  body {
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: none;
+  }
+
   body {
     font-family: var(--font-family-mono);
     color: var(--color-brown-1);
