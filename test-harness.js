@@ -153,6 +153,8 @@ function clearResults() {
 async function runTests(selected) {
   runner.running = true;
   runner.paused = false;
+  // Ignore arrow keys for the whole run so they cannot move tiles mid-test.
+  settings.keyboardControls = false;
   clearResults();
   runTimer.start();
   updateControls();
@@ -190,6 +192,7 @@ async function runTests(selected) {
   }
 
   settings.spawnTileAfterMove = true;
+  settings.keyboardControls = true;
   runner.running = false;
   runner.currentTest = null;
   runTimer.stop();
