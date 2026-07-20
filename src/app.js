@@ -55,8 +55,14 @@ function renderIds(ids) {
     const id = ids[index];
     if (id === 0) {
       cell.removeAttribute("data-id");
+      cell.style.viewTransitionName = "";
     } else {
       cell.dataset.id = `view-${id}`;
+      // Safari fallback: it does not support attr() outside content, so the
+      // CSS rule cannot derive the name from data-id there. Mirror it as an
+      // inline style; in supporting browsers the stylesheet's !important
+      // attr() declaration still wins over this.
+      cell.style.viewTransitionName = `view-${id}`;
     }
   });
 }
@@ -278,8 +284,14 @@ export function performMove(direction) {
 
   let done;
   if (boardEl && typeof boardEl.startViewTransition === "function") {
+    // Scoped transition on the board: only its subtree is snapshotted.
     done = boardEl.startViewTransition(commit).updateCallbackDone;
+  } else if (hasDom && typeof document.startViewTransition === "function") {
+    // Fallback for browsers without scoped view transitions (Safari): run
+    // the transition on the document root instead.
+    done = document.startViewTransition(commit).updateCallbackDone;
   } else {
+    // No DOM (Node.js tests) or no view-transition support at all.
     commit();
     done = Promise.resolve();
   }
