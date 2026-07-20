@@ -26,6 +26,10 @@ const hasDom = typeof document !== "undefined";
 const cells = hasDom ? document.querySelectorAll("#grid .cell") : [];
 const currentScoreEl = hasDom ? document.getElementById("current-score") : null;
 const bestScoreEl = hasDom ? document.getElementById("best-score") : null;
+// The game board doubles as the view transition scope: tile animations run
+// inside its subtree, so the ::view-transition overlay only covers the board
+// and the rest of the page stays on top and interactive.
+const boardEl = hasDom ? document.querySelector(".board") : null;
 
 // --- Render handlers (reactive UI updates) ---
 
@@ -187,11 +191,11 @@ export function computeNextState(currentGrid, direction, currentIds = Array(CELL
 // --- Move pipeline: shared by keyboard controls and programmatic moves ---
 
 // Computes the next state for a move and, if it changed anything, commits it
-// to the live state — inside a view transition when the DOM supports it,
-// synchronously otherwise. Score and best score update through the same
-// reactive proxy path as real play. Returns the outcome plus `done`, a
-// promise that resolves once the state update is committed, so callers
-// (tests) never read pre-transition state.
+// to the live state — inside a view transition scoped to the game board when
+// the DOM supports it, synchronously otherwise. Score and best score update
+// through the same reactive proxy path as real play. Returns the outcome plus
+// `done`, a promise that resolves once the state update is committed, so
+// callers (tests) never read pre-transition state.
 export function performMove(direction) {
   const { grid, ids, scoreDelta, moved } = computeNextState(state.grid, direction, state.ids);
   if (!moved) {
@@ -210,8 +214,8 @@ export function performMove(direction) {
   };
 
   let done;
-  if (hasDom && typeof document.startViewTransition === "function") {
-    done = document.startViewTransition(commit).updateCallbackDone;
+  if (boardEl && typeof boardEl.startViewTransition === "function") {
+    done = boardEl.startViewTransition(commit).updateCallbackDone;
   } else {
     commit();
     done = Promise.resolve();

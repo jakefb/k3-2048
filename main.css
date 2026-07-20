@@ -88,6 +88,11 @@
     background-color: var(--color-beige-3);
   }
 
+  /* Tile capture for the view transition. The transition runs scoped to
+     .board (see app.js), so only cells inside the board are snapshotted and
+     the ::view-transition overlay renders on top of the board alone. The
+     scope self-participates as the "root" group automatically, so only the
+     cells need names — and names only have to be unique within the board. */
   .cell {
     view-transition-class: cell;
   }
