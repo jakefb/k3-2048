@@ -7,6 +7,9 @@ export const settings = {
   // Spawn a random tile after every successful move. The harness disables
   // this so moves in tests are deterministic.
   spawnTileAfterMove: true,
+  // Arrow keys move the tiles. The harness disables this while tests run so
+  // key presses cannot disturb the board mid-test.
+  keyboardControls: true,
 };
 
 const KEY_DIRECTIONS = {
@@ -221,6 +224,7 @@ export function performMove(direction) {
 
 if (hasDom) {
   document.addEventListener("keydown", (event) => {
+    if (!settings.keyboardControls) return;
     const direction = KEY_DIRECTIONS[event.key];
     if (!direction) return;
     event.preventDefault();
