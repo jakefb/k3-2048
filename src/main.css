@@ -88,6 +88,45 @@
     background-color: var(--color-beige-3);
   }
 
+  /* Overlays the board as a third grid layer stacked on top of the two
+     tile grids (later in DOM order, so it paints above them), dimming the
+     tiles behind a semi-opaque scrim with centered content. */
+  .game-over {
+    z-index: 50;
+    grid-area: 1 / 1;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: var(--spacing-2);
+    background-color: var(--color-grey-1);
+    color: var(--color-brown-2);
+    border-radius: var(--radius-1);
+  }
+
+  /* The UA's [hidden] rule loses to the display: grid above, so hiding via
+     the hidden attribute needs this explicit override. */
+  .game-over[hidden] {
+    display: none;
+  }
+
+  .game-over-heading {
+    font-size: 1.5rem;
+  }
+
+  .play-again {
+    background-color: var(--color-blue-1);
+    color: var(--color-brown-2);
+    padding: var(--spacing-1) var(--spacing-3);
+    border: none;
+    border-radius: var(--radius-1);
+    cursor: pointer;
+  }
+
+  .play-again:hover,
+  .play-again:focus-visible {
+    background-color: color-mix(in oklch, var(--color-blue-1), black 10%);
+  }
+
   /* Tile capture for the view transition. The transition runs scoped to
      .board (see app.js), so only cells inside the board are snapshotted and
      the ::view-transition overlay renders on top of the board alone. The

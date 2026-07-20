@@ -1,4 +1,4 @@
-import { test, setGrid, move, assertDeepEqual, state } from "./test-harness.js";
+import { test, setGrid, move, assertDeepEqual, state, isGameOver, parseBestScore } from "./test-harness.js";
 
 const EMPTY_ROW = [0, 0, 0, 0];
 
@@ -194,4 +194,43 @@ test("a move that cannot change the grid is rejected", async () => {
 
   assertDeepEqual(outcome.moved, false, "move rejected");
   assertDeepEqual(state.grid, grid, "grid");
+});
+
+// --- End game ---
+
+const CHECKERED = gridOf([2, 4, 8, 16], [16, 8, 4, 2], [2, 4, 8, 16], [16, 8, 4, 2]);
+
+test("the game is not over while the board has empty cells", () => {
+  const grid = gridOf([2, 4, 8, 16], [16, 8, 4, 2], [2, 4, 8, 16], [16, 8, 4, 0]);
+  assertDeepEqual(isGameOver(grid), false, "an empty cell means moves remain");
+});
+
+test("the game is not over on a full board with a horizontal pair of equal neighbours", () => {
+  const grid = gridOf([2, 2, 8, 16], [16, 8, 4, 2], [2, 4, 8, 16], [16, 8, 4, 2]);
+  assertDeepEqual(isGameOver(grid), false, "the 2s in the first row can merge");
+});
+
+test("the game is not over on a full board with a vertical pair of equal neighbours", () => {
+  const grid = gridOf([2, 4, 8, 16], [16, 8, 4, 2], [2, 4, 8, 16], [16, 8, 4, 16]);
+  assertDeepEqual(isGameOver(grid), false, "the 16s in the last column can merge");
+});
+
+test("the game is over on a full board with no equal neighbours", () => {
+  assertDeepEqual(isGameOver(CHECKERED), true, "checkered board has no moves left");
+});
+
+test("a rejected move on a full board does not trigger game over", async () => {
+  await setGrid(CHECKERED);
+
+  const outcome = await move("left");
+
+  assertDeepEqual(outcome.moved, false, "move rejected");
+  assertDeepEqual(state.gameOver, false, "detection only runs on successful moves");
+});
+
+test("stored best scores parse to numbers, missing or invalid values default to 0", () => {
+  assertDeepEqual(parseBestScore(null), 0, "missing value");
+  assertDeepEqual(parseBestScore("not a number"), 0, "invalid value");
+  assertDeepEqual(parseBestScore("1024"), 1024, "valid value");
+  assertDeepEqual(parseBestScore(String(2048)), 2048, "round trip");
 });

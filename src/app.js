@@ -10,6 +10,9 @@ export const settings = {
   // Arrow keys move the tiles. The harness disables this while tests run so
   // key presses cannot disturb the board mid-test.
   keyboardControls: true,
+  // Swipe gestures move the tiles. The harness disables this while tests run,
+  // mirroring keyboardControls.
+  touchControls: true,
 };
 
 const KEY_DIRECTIONS = {
@@ -30,6 +33,8 @@ const bestScoreEl = hasDom ? document.getElementById("best-score") : null;
 // inside its subtree, so the ::view-transition overlay only covers the board
 // and the rest of the page stays on top and interactive.
 const boardEl = hasDom ? document.querySelector(".board") : null;
+const gameOverEl = hasDom ? document.querySelector(".game-over") : null;
+const playAgainEl = hasDom ? document.querySelector(".play-again") : null;
 
 // --- Render handlers (reactive UI updates) ---
 
@@ -62,11 +67,17 @@ function renderScores() {
   bestScoreEl.textContent = state.bestScore;
 }
 
+function renderGameOver(gameOver) {
+  if (!gameOverEl) return;
+  gameOverEl.hidden = !gameOver;
+}
+
 const handlers = {
   grid: [renderGrid],
   ids: [renderIds],
   score: [renderScores],
   bestScore: [renderScores],
+  gameOver: [renderGameOver],
 };
 
 // --- Game state, wrapped in a Proxy so mutations trigger UI updates ---
@@ -77,6 +88,7 @@ export const state = new Proxy(
     ids: Array(CELL_COUNT).fill(0),
     score: 0,
     bestScore: 0,
+    gameOver: false,
   },
   {
     set(target, key, value) {
@@ -188,6 +200,45 @@ export function computeNextState(currentGrid, direction, currentIds = Array(CELL
   return { grid, ids, scoreDelta, moved };
 }
 
+// Pure game-over predicate: the game is over when the board is full and no
+// two adjacent cells hold the same value, so no merge remains in any
+// direction. Checking each cell's right and down neighbour covers every
+// adjacency exactly once.
+export function isGameOver(grid) {
+  for (let index = 0; index < CELL_COUNT; index++) {
+    if (grid[index] === 0) return false;
+  }
+  for (let row = 0; row < SIZE; row++) {
+    for (let col = 0; col < SIZE; col++) {
+      const index = row * SIZE + col;
+      if (col < SIZE - 1 && grid[index] === grid[index + 1]) return false;
+      if (row < SIZE - 1 && grid[index] === grid[index + SIZE]) return false;
+    }
+  }
+  return true;
+}
+
+// --- Best-score persistence (local storage; all access guarded for Node) ---
+
+const BEST_SCORE_KEY = "best-score";
+const hasStorage = typeof localStorage !== "undefined";
+
+// Parses a stored best-score value; missing or invalid values yield 0.
+export function parseBestScore(stored) {
+  const parsed = Number.parseInt(stored, 10);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+export function loadBestScore() {
+  if (!hasStorage) return 0;
+  return parseBestScore(localStorage.getItem(BEST_SCORE_KEY));
+}
+
+function saveBestScore(score) {
+  if (!hasStorage) return;
+  localStorage.setItem(BEST_SCORE_KEY, String(score));
+}
+
 // --- Move pipeline: shared by keyboard controls and programmatic moves ---
 
 // Computes the next state for a move and, if it changed anything, commits it
@@ -211,6 +262,18 @@ export function performMove(direction) {
         state.bestScore = state.score;
       }
     }
+    // Evaluate the post-spawn board. Rejected moves never reach this — a
+    // full board with no moves left was already reported by the previous
+    // successful move.
+    if (isGameOver(grid)) {
+      state.gameOver = true;
+      // Persist only if the game score beat the stored best. state.bestScore
+      // is only ever raised when state.score exceeds it (above), so the
+      // current-score-takes-precedence behaviour carries over to storage.
+      if (state.bestScore > loadBestScore()) {
+        saveBestScore(state.bestScore);
+      }
+    }
   };
 
   let done;
@@ -228,7 +291,7 @@ export function performMove(direction) {
 
 if (hasDom) {
   document.addEventListener("keydown", (event) => {
-    if (!settings.keyboardControls) return;
+    if (!settings.keyboardControls || state.gameOver) return;
     const direction = KEY_DIRECTIONS[event.key];
     if (!direction) return;
     event.preventDefault();
@@ -236,9 +299,81 @@ if (hasDom) {
   });
 }
 
-// --- Game start: spawn two tiles and render ---
+// --- Swipe controls: touch drags anywhere on the page move tiles ---
 
+const SWIPE_THRESHOLD = 30; // px of travel before a drag counts as a swipe
+const SCROLL_SUPPRESS_DISTANCE = 10; // px of travel before a drag suppresses scrolling
+
+if (hasDom) {
+  // Start point of the current single-touch drag; null while no swipe is in
+  // progress (no touch yet, multi-touch, or controls gated off).
+  let swipeStart = null;
+
+  document.addEventListener("touchstart", (event) => {
+    if (!settings.touchControls || state.gameOver) return;
+    if (event.touches.length > 1) {
+      swipeStart = null; // multi-touch is not a swipe
+      return;
+    }
+    const touch = event.changedTouches[0];
+    swipeStart = { x: touch.clientX, y: touch.clientY };
+  });
+
+  // Once a drag is genuinely under way, suppress scrolling and
+  // pull-to-refresh so the swipe is not hijacked mid-gesture. Not passive,
+  // so preventDefault works; normal page behaviour is untouched until then.
+  document.addEventListener(
+    "touchmove",
+    (event) => {
+      if (!swipeStart) return;
+      const touch = event.changedTouches[0];
+      const dx = touch.clientX - swipeStart.x;
+      const dy = touch.clientY - swipeStart.y;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) > SCROLL_SUPPRESS_DISTANCE) {
+        event.preventDefault();
+      }
+    },
+    { passive: false },
+  );
+
+  document.addEventListener("touchend", (event) => {
+    if (!swipeStart) return;
+    const start = swipeStart;
+    swipeStart = null;
+    if (!settings.touchControls || state.gameOver) return;
+    const touch = event.changedTouches[0];
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    // Below the threshold it was a tap (e.g. on Play again), not a swipe.
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_THRESHOLD) return;
+    // The dominant axis decides the direction.
+    const direction =
+      Math.abs(dx) >= Math.abs(dy)
+        ? dx > 0
+          ? "right"
+          : "left"
+        : dy > 0
+          ? "down"
+          : "up";
+    performMove(direction);
+  });
+}
+
+// --- Play again: the button in the game-over container starts a new game ---
+
+if (hasDom) {
+  playAgainEl?.addEventListener("click", startGame);
+}
+
+// --- Game start: fresh board, zeroed score, best score from storage ---
+
+// Used for the initial load and for Play again. Ids are intentionally not
+// reset: they feed data-id and view-transition names, so they must stay
+// page-unique across restarts.
 function startGame() {
+  state.score = 0;
+  state.gameOver = false; // its handler hides the game-over container
+  state.bestScore = loadBestScore(); // new games load the stored best, default 0
   const grid = Array(CELL_COUNT).fill(0);
   const ids = Array(CELL_COUNT).fill(0);
   spawnTile(grid, ids);
