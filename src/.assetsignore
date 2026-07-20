@@ -1,0 +1,6 @@
+/node_modules/
+/.wrangler/
+/package.json
+/pnpm-lock.yaml
+/pnpm-workspace.yaml
+/wrangler.jsonc

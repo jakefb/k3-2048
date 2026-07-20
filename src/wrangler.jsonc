@@ -1,0 +1,8 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "k3-playground",
+  "compatibility_date": "2026-07-20",
+  "assets": {
+    "directory": "./"
+  }
+}
