@@ -367,10 +367,27 @@ if (hasDom) {
   });
 }
 
+// --- Page gestures: scrolling and zooming are disabled for the whole page ---
+
+// CSS (touch-action, overflow, overscroll-behavior in main.css) covers
+// modern browsers; these handlers are the fallback for older iOS Safari,
+// which lacks touch-action. Canceling every touchmove blocks scrolling and
+// rubber-banding (non-passive so preventDefault works), and canceling
+// Safari's non-standard gesture events blocks pinch zoom. Taps are
+// unaffected: a tap fires no touchmove, so clicks (e.g. Play again) still
+// work.
+if (hasDom) {
+  document.addEventListener("touchmove", (event) => event.preventDefault(), {
+    passive: false,
+  });
+  for (const type of ["gesturestart", "gesturechange", "gestureend"]) {
+    document.addEventListener(type, (event) => event.preventDefault());
+  }
+}
+
 // --- Swipe controls: touch drags anywhere on the page move tiles ---
 
 const SWIPE_THRESHOLD = 30; // px of travel before a drag counts as a swipe
-const SCROLL_SUPPRESS_DISTANCE = 10; // px of travel before a drag suppresses scrolling
 
 if (hasDom) {
   // Start point of the current single-touch drag; null while no swipe is in
@@ -386,23 +403,6 @@ if (hasDom) {
     const touch = event.changedTouches[0];
     swipeStart = { x: touch.clientX, y: touch.clientY };
   });
-
-  // Once a drag is genuinely under way, suppress scrolling and
-  // pull-to-refresh so the swipe is not hijacked mid-gesture. Not passive,
-  // so preventDefault works; normal page behaviour is untouched until then.
-  document.addEventListener(
-    "touchmove",
-    (event) => {
-      if (!swipeStart) return;
-      const touch = event.changedTouches[0];
-      const dx = touch.clientX - swipeStart.x;
-      const dy = touch.clientY - swipeStart.y;
-      if (Math.max(Math.abs(dx), Math.abs(dy)) > SCROLL_SUPPRESS_DISTANCE) {
-        event.preventDefault();
-      }
-    },
-    { passive: false },
-  );
 
   document.addEventListener("touchend", (event) => {
     if (!swipeStart) return;
