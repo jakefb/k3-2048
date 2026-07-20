@@ -1,0 +1,169 @@
+@layer reset, variables, test-colors, game, tests;
+
+@import url("main.css");
+@import url("test-colors.css") layer(test-colors);
+@import url("spinner-animation.css") layer(tests);
+
+@layer tests {
+  /* Two-column page layout: the game is centered in the space between the
+     left edge of the page and the tests panel, which sits flush against the
+     right edge. */
+  body {
+    grid-template-columns: 1fr auto;
+  }
+
+  /* Annotate each tile with its data-id — the tile's view-transition-name —
+     in the bottom right corner of the cell, so tile identities can be
+     followed through the view transitions as they move and merge. */
+  .cell[data-id] {
+    position: relative;
+  }
+
+  .cell[data-id]::after {
+    content: attr(data-id);
+    position: absolute;
+    right: calc(var(--spacing-1) / 2);
+    bottom: calc(var(--spacing-1) / 2);
+    font-size: 0.625rem;
+    font-weight: normal;
+    line-height: 1;
+    color: var(--color-cell-id);
+  }
+
+  .test-controls {
+    align-self: end;
+    display: grid;
+    gap: var(--spacing-2);
+    width: var(--grid-size);
+    padding: var(--spacing-2);
+    background-color: var(--color-grey-panel);
+    color: var(--color-grey-text);
+  }
+
+  .test-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-2);
+  }
+
+  .test-controls button {
+    padding: var(--spacing-1) var(--spacing-2);
+    border: none;
+    border-radius: var(--radius-1);
+    background-color: var(--color-beige-1);
+    color: var(--color-brown-2);
+    cursor: pointer;
+  }
+
+  .test-controls button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  #run-tests {
+    background-color: var(--color-blue-1);
+  }
+
+  .step-delay {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+  }
+
+  .step-delay input {
+    accent-color: var(--color-blue-1);
+  }
+
+  .step-delay output {
+    min-width: 6ch;
+  }
+
+  .test-selector-actions {
+    display: flex;
+    gap: var(--spacing-1);
+  }
+
+  /* The list scrolls within its own box — the panel itself does not
+     scroll — once it grows past the max height. */
+  .test-list {
+    list-style: none;
+    max-height: 60vh;
+    overflow-y: auto;
+    scrollbar-color: var(--color-grey-3) transparent;
+  }
+
+  /* One row per test: checkbox, description, and result status columns */
+  .test-list li {
+    display: grid;
+    grid-template-columns: auto 1fr 1.5em;
+    align-items: center;
+    gap: var(--spacing-1);
+    padding: calc(var(--spacing-1) / 2) var(--spacing-1);
+  }
+
+  /* Zebra striping instead of borders */
+  .test-list li:nth-child(odd) {
+    background-color: var(--color-grey-1);
+  }
+
+  .test-list li:nth-child(even) {
+    background-color: var(--color-grey-2);
+  }
+
+  /* Deselected tests are muted */
+  .test-list li.muted {
+    color: var(--color-grey-3);
+  }
+
+  .test-result {
+    text-align: center;
+  }
+
+  .test-list li[data-result="passed"] .test-result::after {
+    content: "✅";
+  }
+
+  .test-list li[data-result="failed"] .test-result::after {
+    content: "❌";
+  }
+
+  .test-list li[data-result="running"] .test-result::after {
+    content: "";
+    /* The spinner artwork spans 6.2em across (2.6em shadow offset plus the
+       0.5em dot radius on both sides), so this scales it down to 1em — the
+       size of the row's text. */
+    font-size: calc(1em / 6.2);
+    display: inline-block;
+    /* The artwork is centered on the element's own box, so align the box's
+       midpoint with the text's vertical center — with baseline alignment an
+       empty inline-block sits its bottom edge on the text baseline, which
+       leaves the spinner hanging below the row's center. */
+    vertical-align: middle;
+    width: 1em;
+    height: 1em;
+    border-radius: 50%;
+    animation: mulShdSpin 1.1s infinite ease;
+    transform: translateZ(0);
+  }
+
+  .test-list.paused li[data-result="running"] .test-result::after {
+    animation-play-state: paused;
+  }
+
+  .test-list label {
+    cursor: pointer;
+  }
+
+  .test-list input {
+    accent-color: var(--color-blue-1);
+  }
+
+  .test-status {
+    min-height: 1.5em;
+  }
+
+  .test-note {
+    margin-top: var(--spacing-2);
+  }
+}

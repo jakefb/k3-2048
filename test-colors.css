@@ -1,0 +1,24 @@
+/* Colors used only by the test page UI (test.html), kept separate from the
+   game's palette in variables.css */
+:root {
+  /* Tests panel: dark grey background with light text */
+  --color-grey-panel: oklch(0.35 0 0); /* panel background */
+  --color-grey-text: oklch(0.92 0 0);  /* text on the dark panel */
+
+  /* Running-test spinner: a white head with a fading trail, chosen to stay
+     visible on top of the dark striped rows */
+  --color-spinner-1: oklch(1 0 0);        /* #ffffff */
+  --color-spinner-2: oklch(1 0 0 / 0.3);  /* rgba(255, 255, 255, 0.3) */
+  --color-spinner-3: oklch(1 0 0 / 0.6);  /* rgba(255, 255, 255, 0.6) */
+  --color-spinner-4: oklch(1 0 0 / 0.8);  /* rgba(255, 255, 255, 0.8) */
+
+  /* Test list: zebra striping as translucent white over the dark panel, and
+     muted text on deselected rows */
+  --color-grey-1: oklch(1 0 0 / 0.05); /* odd rows */
+  --color-grey-2: oklch(1 0 0 / 0.12); /* even rows */
+  --color-grey-3: oklch(0.65 0 0);     /* muted text */
+
+  /* Cell id badge: the tile's data-id annotated in the corner of each cell,
+     translucent so it reads as a debug label over the tile */
+  --color-cell-id: oklch(0.42 0.04 60 / 0.6);
+}

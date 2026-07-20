@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>2048 clone &mdash; tests</title>
+    <link rel="stylesheet" href="test.css">
+    <script type="module" src="tests.js"></script>
+  </head>
+  <body>
+    <!-- tests.js imports app.js, which renders into this DOM on import -->
+    <main class="game">
+      <header class="scores">
+        <div class="score">
+          <span class="score-label">Score</span>
+          <span class="score-value" id="current-score">0</span>
+        </div>
+        <div class="score">
+          <span class="score-label">Best</span>
+          <span class="score-value" id="best-score">0</span>
+        </div>
+      </header>
+      <div class="board">
+        <div class="grid grid-background" aria-hidden="true">
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+        </div>
+        <div class="grid" id="grid">
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+        </div>
+      </div>
+    </main>
+    <section class="test-controls" aria-label="Test controls">
+      <div class="test-toolbar">
+        <button id="run-tests" type="button">Run</button>
+        <button id="pause-tests" type="button" disabled>Pause</button>
+        <label class="step-delay">
+          Step delay
+          <input type="range" id="step-delay" min="0" max="2000" step="50" value="600">
+          <output id="step-delay-value" for="step-delay">600ms</output>
+        </label>
+      </div>
+      <ul class="test-list" id="test-list"></ul>
+      <div class="test-selector-actions">
+        <button id="select-all" type="button">All</button>
+        <button id="select-none" type="button">None</button>
+      </div>
+      <p class="test-status" id="test-status" role="status"></p>
+      <p class="test-note">Test results are logged to the console.</p>
+    </section>
+  </body>
+</html>
