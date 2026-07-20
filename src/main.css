@@ -84,8 +84,41 @@
     background-color: var(--color-beige-2);
   }
 
+  /* Base tile colour: any value not overridden below (128 and above) is
+     yellow with white text. The specific data-value rules have the same
+     specificity, so they must come after this to win. */
   .cell[data-value] {
+    background-color: var(--color-yellow-1);
+    color: var(--color-white-1);
+  }
+
+  .cell[data-value="2"],
+  .cell[data-value="4"] {
+    color: var(--color-brown-1);
+  }
+
+  .cell[data-value="2"] {
+    background-color: var(--color-beige-4);
+  }
+
+  .cell[data-value="4"] {
     background-color: var(--color-beige-3);
+  }
+
+  .cell[data-value="8"] {
+    background-color: var(--color-orange-1);
+  }
+
+  .cell[data-value="16"] {
+    background-color: var(--color-orange-2);
+  }
+
+  .cell[data-value="32"] {
+    background-color: var(--color-red-1);
+  }
+
+  .cell[data-value="64"] {
+    background-color: var(--color-red-2);
   }
 
   /* Overlays the board as a third grid layer stacked on top of the two
